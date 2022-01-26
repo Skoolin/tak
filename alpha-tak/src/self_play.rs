@@ -13,7 +13,7 @@ use crate::{
     turn_map::LUT,
 };
 
-const SELF_PLAY_GAMES: u32 = 1000;
+const SELF_PLAY_GAMES: u32 = 256;
 const ROLLOUTS_PER_MOVE: u32 = 100;
 const PIT_GAMES: u32 = 200;
 const WIN_RATE_THRESHOLD: f64 = 0.55;
@@ -141,7 +141,7 @@ where
     PitResult { wins, draws, losses }
 }
 
-pub fn play_until_better<const N: usize>(network: Network<N>, examples: &mut Vec<Example<N>>) -> Network<N>
+pub fn play_until_better<const N: usize>(network: Network<N>) -> Network<N>
 where
     [[Option<Tile>; N]; N]: Default,
     Turn<N>: LUT,
@@ -154,8 +154,7 @@ where
     let mut new_network = Network::<N>::load(&dir).unwrap();
 
     loop {
-        examples.extend(self_play(&network).into_iter());
-        new_network.train(examples);
+        new_network.train(&self_play(&network));
         let results = pit(&new_network, &network);
         println!("{:?}", results);
         if results.win_rate() > WIN_RATE_THRESHOLD {

@@ -15,7 +15,7 @@ use crate::{
     repr::{game_repr, input_dims, moves_dims},
 };
 
-const EPOCHS: usize = 100;
+const EPOCHS: usize = 1; // probably don't want to look at one position more then once, except with applied symmetries
 const BATCH_SIZE: i64 = 10_000; // just do whole dataset https://discord.com/channels/176389490762448897/932765511358513204/934552328479080479
 const LEARNING_RATE: f64 = 1e-3;
 const WEIGHT_DECAY: f64 = 1e-4;
@@ -127,19 +127,19 @@ impl<const N: usize> Default for Network<N> {
         let root = &vs.root();
         let [d1, _d2, _d3] = input_dims(N);
         let conv1 = nn::conv2d(root, d1 as i64, 32, 3, ConvConfig {
-            padding: 3,
+            padding: 1,
             ..Default::default()
         });
         let conv2 = nn::conv2d(root, 32, 64, 3, ConvConfig {
-            padding: 3,
+            padding: 1,
             ..Default::default()
         });
         let conv3 = nn::conv2d(root, 64, 128, 3, ConvConfig {
-            padding: 3,
+            padding: 1,
             ..Default::default()
         });
         let conv4 = nn::conv2d(root, 128, 128, 3, ConvConfig {
-            padding: 3,
+            padding: 1,
             ..Default::default()
         });
         let fc1 = nn::linear(root, (N * N * 128) as i64, 2048, Default::default());
@@ -161,23 +161,17 @@ impl<const N: usize> Default for Network<N> {
 }
 
 impl<const N: usize> nn::ModuleT for Network<N> {
-    fn forward_t(&self, input: &Tensor, train: bool) -> Tensor {
+    fn forward_t(&self, input: &Tensor, _train: bool) -> Tensor {
         let s = input
             .apply(&self.conv1)
-            .max_pool2d_default(2)
             .apply(&self.conv2)
-            .max_pool2d_default(2)
             .apply(&self.conv3)
-            .max_pool2d_default(2)
             .apply(&self.conv4)
-            .max_pool2d_default(2)
             .reshape(&[-1, (N * N * 128) as i64])
             .apply(&self.fc1)
             .relu()
-            .dropout(0.5, train)
             .apply(&self.fc2)
-            .relu()
-            .dropout(0.5, train);
+            .relu();
         let policy = s.apply(&self.fc3).log_softmax(1, Kind::Float);
         let eval = s.apply(&self.fc4).tanh();
         // would be nice if I could just return two values
