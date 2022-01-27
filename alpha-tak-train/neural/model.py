@@ -153,7 +153,7 @@ def train(net, dataset, epochs, batch_size, lr=0.003, policy_weights=None):
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     optimizer = optim.Adam(net.parameters(), lr=lr)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, 3, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.1)
     for epoch in range(epochs):
         for idx, batch in enumerate(train_loader):
             s, target_p, target_v = batch
@@ -181,3 +181,4 @@ def train(net, dataset, epochs, batch_size, lr=0.003, policy_weights=None):
                         top5_count = top5_count+1
 
         test(net, validation_set, batch_size)
+        scheduler.step()

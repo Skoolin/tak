@@ -23,7 +23,7 @@ def predict_move(net, s):
         print(str(i+1) + ". " + get_move_from_conv_repr(top5.indices[0][i].item()) + ": " + str(top5.values[0][i].item()))
 
 
-builder = DatasetBuilder()
+builder = DatasetBuilder(add_symmetries=True, ignore_plies=4)
 ptn_parser.main("../data/games.ptn", builder)
 np.set_printoptions(threshold=sys.maxsize)
 print(len(builder))
@@ -47,13 +47,3 @@ test(net, test_set, batch_size=128)
 builder = DatasetBuilder()
 ptn_parser.main("../data/single.ptn", builder)
 test(net, builder, batch_size=20)
-
-game = GameState(6)
-
-for i in range(40):
-    input, policy, value = builder[i]
-    game.print_state()
-    move = get_move_from_conv_repr(policy)
-    print("human move: " + move)
-    predict_move(net, get_input_repr(game))
-    game.move(move)

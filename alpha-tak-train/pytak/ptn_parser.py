@@ -1,4 +1,5 @@
 import sys
+import re
 
 from tqdm import tqdm
 
@@ -7,36 +8,57 @@ from pytak.tak import GameState
 
 
 def add_ptn(ptn, dp: PositionProcessor, max_plies=sys.maxsize):
+    lines = ptn.split('\n')
 
-    spl = ptn.split("\n\n")
-    headers = spl[0]
-    moves = spl[1]
-
-    # parse headers
-    spl = headers.split("\n")
-    white_name = spl[2][10:-2]
-    black_name = spl[3][10:-2]
-    result = spl[4][9:12]
-    size = int(spl[5][7])
-    rating_white = int(spl[6][10:-2])
-    rating_black = int(spl[7][10:-2])
-
-    playtak_id = int(spl[8].split(' ')[1][1:-2])
-
-    # parse moves
-    spl = moves.split("\n")
+    headers = {}
     all_moves = []
-    for row in spl:
-        two_ply = row.split(" ")
-        all_moves.append(two_ply[1])
-        if len(two_ply) > 2:
-            all_moves.append(two_ply[2])
+    result = '0-0'
+
+    for line in lines:
+        if len(line) < 4:
+            continue
+        if line.startswith('['):
+            line = line[1:-1] # remove brackets
+            header_name, header_value = line.split(' ')
+            header_value = header_value[1:-1] # remove "
+            headers[header_name] = header_value
+            if header_name = 'Result':
+                result = header_value
+            continue
+
+        # remove comments
+        line = re.sub(r'\{[^{}]*\}', '', line)
+
+        words = line.split(' ')
+        for word in words:
+            if len(word) < 2:
+                continue
+            if word[-1] = '.': # move number
+                continue
+            if word == result: # game result on end (not required)
+                continue
+
+            # extend spreads to full size
+            if any(x in word for x in ['-','+','<','>']):
+                if not word[0].isnumeric():
+                    word = '1'+word
+                if not word[-1].isnumeric():
+                    word = word+word[0]
+
+            all_moves.append(word)
 
     # apply upper bound of ply depth
     all_moves = all_moves[0:min(len(all_moves), max_plies)]
 
+    size = int(headers["Size"])
+    playtak_id = headers["playtak_id"] if headers.has_key("playtak_id") else 0
+    white_name = headers["Player1"]
+    black_name = headers["Player2"]
+    rating_white = headers["Rating1"] if headers.has_key("Rating1") else 1000
+    rating_black = headers["Rating2"] if headers.has_key("Rating2") else 1000
+
     # create board
-    tak = GameState(size)
+    tak = GameState(6)
 
     # add game to database
     game_id = dp.add_game(size, playtak_id, white_name, black_name, ptn, result, rating_white, rating_black)
@@ -54,21 +76,25 @@ def main(ptn_file, dp: PositionProcessor):
 
     max_plies = 400
 
-    ptn = ''
-
     f = open(ptn_file)
-    count = f.read().count('[Site')
+    count = f.read().count('\n\n[')+1
     f.close()
 
     with tqdm(total=count, mininterval=10.0, maxinterval=50.0) as progress:
         with open(ptn_file) as f:
+            ptn = ''
             line = f.readline()
-            ptn += line
-            line = f.readline()
+            parse_headers = True
             while line:
-                if line.startswith("[Site"):
-                    add_ptn(ptn, dp, max_plies)
-                    progress.update()
-                    ptn = ''
+                if line.startswith("["):
+                    if not parse_headers:
+                        add_ptn(ptn, dp, max_plies)
+                        parse_headers = True
+                        progress.update()
+                        ptn = ''
+                else:
+                    parse_headers = False
                 ptn += line
                 line = f.readline()
+            add_ptn(ptn, dp, max_plies)
+            progress.update()

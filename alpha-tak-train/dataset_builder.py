@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from pytak.position_processor import PositionProcessor
 from pytak.tak import GameState
+from pytak.symmetry_normalizer import transform_move
 
 offset_dict = {
     '1':      0,
@@ -73,16 +74,18 @@ offset_dict = {
 
 class DatasetBuilder(PositionProcessor, Dataset):
 
-    def __init__(self):
+    def __init__(self, add_symmetries=False, ignore_plies=0):
         self.inputs   = [] # list of np arrays. contains board representation as input to network
-        self.values   = [] # list of np arrays. contains target values for positions
         self.policies = [] # list of np arrays. contains target policies for positions
+        self.values   = [] # list of np arrays. contains target values for positions
 
-        self.policy_counts = np.ones((9036), dtype=int) * 500 # + 500 to not skew this too much
+        self.policy_counts = np.zeros((9036), dtype=int)
 
         self.result = 0.0  # float, target value for current game
 
         self.max_size=2_000_000_000
+        self.add_symmetries=add_symmetries
+        self.ignore_plies=ignore_plies
 
     def __len__(self):
         return len(self.values)
@@ -91,6 +94,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
         return self.inputs[idx], self.policies[idx], self.values[idx]
 
     def add_game(self, size: int, playtak_id: int, white_name: str, black_name: str, ptn: str, result: str, rating_white: int, rating_black: int) -> int:
+        self.plie=0
         if result[1] == '/':
             self.result = 0.0
         elif result[0] == '0':
@@ -105,6 +109,9 @@ class DatasetBuilder(PositionProcessor, Dataset):
             return
         if len(self) >= self.max_size:
             return
+        self.plie += 1
+        if self.plie <= self.ignore_plies:
+            return
 
         input = get_input_repr(tak)
 
@@ -112,13 +119,31 @@ class DatasetBuilder(PositionProcessor, Dataset):
         # result is inverted, as board is always transformed to current player perspective
         value = np.array([self.result if tak.player == "white" else -self.result])
 
-        policy = get_conv_move_repr(move)
-        self.policy_counts[policy] += 1
 
-        self.inputs.append(input)
-        self.values.append(value)
-        self.policies.append(policy)
+        if(self.add_symmetries):
+            for symmetry in range(8):
+                s_move = transform_move(move, symmetry)
+                policy = get_conv_move_repr(s_move)
+                self.policy_counts[policy] += 1
+                s_input = transform_pos(input, symmetry)
+                self.inputs.append(s_input)
+                self.policies.append(policy)
+                self.values.append(value)
+        else:
+            policy = get_conv_move_repr(move)
+            self.policy_counts[policy] += 1
+            self.inputs.append(input)
+            self.policies.append(policy)
+            self.values.append(value)
 
+
+def transform_pos(input, orientation):
+    if orientation == 0:
+        return input
+    if orientation >= 4:
+        orientation -= 4
+        input = np.flip(input, axis=1)
+    return np.rot90(input, k=orientation, axes=(1,2)).copy()
 
 # input representation: channels first. channels*height*width = 22*6*6
 # channels: (w = current player, b = other player)
