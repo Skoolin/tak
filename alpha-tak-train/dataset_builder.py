@@ -1,7 +1,7 @@
 from typing import Union
 import numpy as np
 import torch
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 
 from pytak.position_processor import PositionProcessor
 from pytak.tak import GameState
@@ -71,14 +71,24 @@ offset_dict = {
     '6':     61,
     }
 
-class DatasetBuilder(PositionProcessor):
+class DatasetBuilder(PositionProcessor, Dataset):
 
     def __init__(self):
         self.inputs   = [] # list of np arrays. contains board representation as input to network
         self.values   = [] # list of np arrays. contains target values for positions
         self.policies = [] # list of np arrays. contains target policies for positions
 
+        self.policy_counts = np.ones((9036), dtype=int) * 500 # + 500 to not skew this too much
+
         self.result = 0.0  # float, target value for current game
+
+        self.max_size=2_000_000_000
+
+    def __len__(self):
+        return len(self.values)
+
+    def __getitem__(self, idx):
+        return self.inputs[idx], self.policies[idx], self.values[idx]
 
     def add_game(self, size: int, playtak_id: int, white_name: str, black_name: str, ptn: str, result: str, rating_white: int, rating_black: int) -> int:
         if result[1] == '/':
@@ -93,29 +103,31 @@ class DatasetBuilder(PositionProcessor):
     def add_position(self, game_id: int, move, result: str, tps: str, next_tps: Union[str, None], tak: GameState):
         if move == None:
             return
-        print("representation for tps " + tps + " with move " + move + ":")
+        if len(self) >= self.max_size:
+            return
 
         input = get_input_repr(tak)
-        print("input: ", input)
 
         # create value np array
         # result is inverted, as board is always transformed to current player perspective
         value = np.array([self.result if tak.player == "white" else -self.result])
-        print("value: ", value)
 
         policy = get_conv_move_repr(move)
-        print("policy: ", policy)
+        self.policy_counts[policy] += 1
 
         self.inputs.append(input)
         self.values.append(value)
         self.policies.append(policy)
 
-# input representation: channels first. channels*height*width.
+
+# input representation: channels first. channels*height*width = 22*6*6
 # channels: (w = current player, b = other player)
 # - 6 for top stone: w_cap, b_cap, w_wall, b_wall, w_flat, b_flat
-# - 2 for 7 remaining stones each: w_flat, b_flat (top to bottom)
+# - 2 for 10 remaining stones each: w_flat, b_flat (top to bottom)
+# - all ones if white current player
+# . all ones if black current player
 def get_input_repr(board: GameState):
-    input = np.zeros((20,6,6), dtype=float)
+    input = np.zeros((6+2*10+2,6,6), dtype=float)
 
     for x in range(6):
         for y in range(6):
@@ -136,11 +148,13 @@ def get_input_repr(board: GameState):
                 input[idx, x, y] = 1.0
                 idx = 6
                 for stone in reversed(stack[:-1]): # ignore top stone
-                    if idx > 18:
+                    if idx > 24:
                         break
                     use_idx = idx if stone.colour == board.player else idx+1
                     input[use_idx, x, y] = 1.0
                     idx = idx+2
+
+            input[26 if board.player == "white" else 27, x, y] = 1.0
 
     return input
 
@@ -150,6 +164,32 @@ def get_flat_move_repr(move: str):
     policy = np.zeros((4572), dtype=float)
     return policy
 
+def get_move_from_conv_repr(idx):
+    y = idx // (6*(3+4*62))
+    idx = idx % (6*(3+4*62))
+    x = idx // (3+4*62)
+    idx = idx % (3+4*62)
+    square = from_square(x, y)
+
+    if idx == 0:
+        return square
+    elif idx == 1:
+        return 'S' + square
+    elif idx == 2:
+        return 'C' + square
+    else:
+        idx = idx - 3
+        for dir in ('>', '-', '<', '+'):
+            if idx > 61:
+                idx = idx - 62
+                continue
+            spread = list(offset_dict.keys())[idx]
+            height = 0
+            for c in spread:
+                height += int(c)
+            return str(height)+square+dir+spread
+
+
 # move representation as output from fully convolutional network. for each
 # square, channels are:
 # - 3 for each placement type
@@ -157,8 +197,9 @@ def get_flat_move_repr(move: str):
 #   board edge
 #
 # total of 9036 values, about half don't correspond to valid moves on board.
+# target will have only the index of the onehot vector
 def get_conv_move_repr(move: str):
-    policy = np.zeros((3+4*62,6,6), dtype=float)
+    policy = np.zeros((1), dtype=int)
 
     # check for move command:
     if any(x in move for x in ('>', '<', '+', '-')):
@@ -190,8 +231,12 @@ def get_conv_move_repr(move: str):
             raise Exception("ERROR: invalid stone type " + stone_type)
 
     (x, y) = get_square(ptn)
-    policy[idx,x,y] = 1.0
-    return policy
+    return idx + x*(3+4*62) + y*6*(3+4*62)
+
+def from_square(x, y):
+    x = chr(x+97)
+    y = str(y+1)
+    return x+y
 
 def get_square(ptn: str):
     x = ord(ptn[0].lower()) - 97

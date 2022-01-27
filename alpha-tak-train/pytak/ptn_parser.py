@@ -44,15 +44,15 @@ def add_ptn(ptn, dp: PositionProcessor, max_plies=sys.maxsize):
     # make all moves
     for i in range(0, len(all_moves)):
         last_tps = tak.get_tps()
-        tak.move(all_moves[i])
         last_move = all_moves[i]
         dp.add_position(game_id, last_move, result, last_tps, tak.get_tps(), tak)
+        tak.move(all_moves[i])
     dp.add_position(game_id, None, result, tak.get_tps(), None, tak)
 
 
 def main(ptn_file, dp: PositionProcessor):
 
-    max_plies = 30
+    max_plies = 400
 
     ptn = ''
 
