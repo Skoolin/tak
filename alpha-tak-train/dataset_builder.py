@@ -1,3 +1,4 @@
+import sys
 from typing import Union
 import numpy as np
 import torch
@@ -83,7 +84,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
 
         self.result = 0.0  # float, target value for current game
 
-        self.max_size=2_000_000_000
+        self.max_size=sys.maxsize
         self.add_symmetries=add_symmetries
         self.ignore_plies=ignore_plies
 
@@ -142,7 +143,7 @@ def transform_pos(input, orientation):
         return input
     if orientation >= 4:
         orientation -= 4
-        input = np.flip(input, axis=1)
+        input = np.flip(input, axis=2)
     return np.rot90(input, k=orientation, axes=(1,2)).copy()
 
 # input representation: channels first. channels*height*width = 22*6*6

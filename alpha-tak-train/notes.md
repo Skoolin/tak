@@ -35,11 +35,29 @@ to be because players have orientation preference. Removing first 4 plies from
 dataset for this and other reasons. Training for 10 epochs with and without
 symmetries from 5th ply onward and comparing results.
 
+## fixed bug!!
+I found the mistake, it was indeed in the dataset. The mirrored
+symmetries where calculated wrong, so half of the data was scrambled. That is
+why it had only 50% the accuracy of the no symmetry model.
+
 ## 5-48: 10 epoch, lr 0.01 no-opening no symmetries:
 accuracy: 0.11771243811255937
 top5 accuracy: 0.33676871779327067
 
 ## 5-48: 10 epoch, lr 0.01 no-opening all symmetries:
+accuracy: 0.15202759549049302
+top5 accuracy: 0.4230607437321218
+Surpasses no symmetry in first epoch, acc. after 1 epoch:
+accuracy: 0.1293117953895339
+top5 accuracy: 0.36739301138594427
+No sign of overfitting.
+This is definitely enough data to drop LR during training, but to get the
+direct comparison between both dataset options I don't change LR here.
+
+## 5-48: 6 epoch, lr 0.01 (drop after 2 and 4 epochs), tako vs. tiltak data:
+accuracy on bot games:
+
+accuracy on playtak games:
 
 
 # general thoughts

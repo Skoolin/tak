@@ -141,10 +141,14 @@ def test(net, dataset, batch_size=64):
     print("accuracy: " + str(top1_count/num_entries))
     print("top5 accuracy: " + str(top5_count/num_entries))
 
-def train(net, dataset, epochs, batch_size, lr=0.003, policy_weights=None):
+def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weights=None):
     print("training...")
     print(str(len(dataset)) + " samples")
-    net.train()
+    cuda = torch.cuda.is_available()
+    if cuda:
+        net.cuda()
+        net.train()
+
     criterion = MultiLoss(policy_weights)
 
     train_set_size = int(len(dataset) * 0.9)
@@ -153,32 +157,27 @@ def train(net, dataset, epochs, batch_size, lr=0.003, policy_weights=None):
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     optimizer = optim.Adam(net.parameters(), lr=lr)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, 10, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, lr_steps, gamma=0.1)
     for epoch in range(epochs):
+        loss_sum = 0.
         for idx, batch in enumerate(train_loader):
             s, target_p, target_v = batch
+            s = s.float()
+            target_v = target_v.float()
+            if cuda:
+                s, target_p, target_v = s.cuda(), target_p.cuda(), target_v.cuda()
             optimizer.zero_grad()
-            predicted_p, predicted_v = net(s.float())
+            predicted_p, predicted_v = net(s)
 
-            loss = criterion(predicted_p, target_p, predicted_v, target_v.float())
+            loss = criterion(predicted_p, target_p, predicted_v, target_v)
             loss.backward()
             optimizer.step()
 
-            if idx % 20 == 0:
-                print("completed batch " + str(idx) + "! current loss: " + str(loss.item()))
+            loss_sum += loss.item()
 
-                pred_p_result = predicted_p.argmax(dim=1)
-                pred_p_top5 = torch.topk(predicted_p, 5, dim=1)
-
-                top1_count = 0
-                top5_count = 0
-
-                for i in range(len(target_p)):
-                    if pred_p_result[i] == target_p[i]:
-                        top1_count = top1_count+1
-                    i_pred_p_top5 = [pred_p_top5.indices[i][x] for x in range(5)]
-                    if target_p[i].item() in i_pred_p_top5:
-                        top5_count = top5_count+1
+            if idx % 100 == 0:
+                print("completed batch " + str(idx) + "! current loss: " + str(loss_sum/100.))
+                loss_sum = 0.
 
         test(net, validation_set, batch_size)
         scheduler.step()

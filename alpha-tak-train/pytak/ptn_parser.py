@@ -19,10 +19,12 @@ def add_ptn(ptn, dp: PositionProcessor, max_plies=sys.maxsize):
             continue
         if line.startswith('['):
             line = line[1:-1] # remove brackets
-            header_name, header_value = line.split(' ')
+            split = line.split(' ')
+            header_name = split[0]
+            header_value = ' '.join(split[1:])
             header_value = header_value[1:-1] # remove "
             headers[header_name] = header_value
-            if header_name = 'Result':
+            if header_name == 'Result':
                 result = header_value
             continue
 
@@ -33,7 +35,7 @@ def add_ptn(ptn, dp: PositionProcessor, max_plies=sys.maxsize):
         for word in words:
             if len(word) < 2:
                 continue
-            if word[-1] = '.': # move number
+            if word[-1] == '.': # move number
                 continue
             if word == result: # game result on end (not required)
                 continue
@@ -51,11 +53,11 @@ def add_ptn(ptn, dp: PositionProcessor, max_plies=sys.maxsize):
     all_moves = all_moves[0:min(len(all_moves), max_plies)]
 
     size = int(headers["Size"])
-    playtak_id = headers["playtak_id"] if headers.has_key("playtak_id") else 0
+    playtak_id = headers["playtak_id"] if "playtak_id" in headers.keys() else 0
     white_name = headers["Player1"]
     black_name = headers["Player2"]
-    rating_white = headers["Rating1"] if headers.has_key("Rating1") else 1000
-    rating_black = headers["Rating2"] if headers.has_key("Rating2") else 1000
+    rating_white = headers["Rating1"] if "Rating1" in headers.keys() else 1000
+    rating_black = headers["Rating2"] if "Rating2" in headers.keys() else 1000
 
     # create board
     tak = GameState(6)
