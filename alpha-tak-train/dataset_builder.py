@@ -75,7 +75,8 @@ offset_dict = {
 
 class DatasetBuilder(PositionProcessor, Dataset):
 
-    def __init__(self, add_symmetries=False, ignore_plies=0):
+    def __init__(self, add_symmetries=False, ignore_plies=0, max_plies=400):
+        self.num_games = 0
         self.inputs   = [] # list of np arrays. contains board representation as input to network
         self.policies = [] # list of np arrays. contains target policies for positions
         self.values   = [] # list of np arrays. contains target values for positions
@@ -87,6 +88,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
         self.max_size=1_000_000
         self.add_symmetries=add_symmetries
         self.ignore_plies=ignore_plies
+        self.max_plies=max_plies
 
     def __len__(self):
         return len(self.values)
@@ -105,6 +107,8 @@ class DatasetBuilder(PositionProcessor, Dataset):
         else:
             print("ERROR: can't parse game result!")
 
+        self.num_games += 1
+
     def add_position(self, game_id: int, move, result: str, tps: str, next_tps: Union[str, None], tak: GameState):
         if move == None:
             return
@@ -112,6 +116,8 @@ class DatasetBuilder(PositionProcessor, Dataset):
             return
         self.plie += 1
         if self.plie <= self.ignore_plies:
+            return
+        if self.plie > self.max_plies+self.ignore_plies:
             return
 
         input = get_input_repr(tak)

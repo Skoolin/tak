@@ -22,7 +22,9 @@ files = [
     "../data/tiltak_tako_4.ptn",
 ]
 
-net = TakNetwork(stack_limit=10, res_blocks=8, filters=128)
+test_file = "../data/games_test.ptn"
+
+net = TakNetwork(stack_limit=10, res_blocks=10, filters=128)
 
 lr = 0.01
 for epoch in range(5):
@@ -30,9 +32,16 @@ for epoch in range(5):
     for f in files:
         builder = DatasetBuilder(add_symmetries=True, ignore_plies=4)
         ptn_parser.main(f, builder)
-        np.set_printoptions(threshold=sys.maxsize)
 
         train(net, builder, epochs=1, batch_size=512, lr=lr)
-  lr = lr / 2.
+    builder = DatasetBuilder(add_symmetries=True, ignore_plies=4)
+    ptn_parser.main(test_file, builder)
 
-torch.save(net, 'model_8_128')
+    print("---TEST---")
+    acc, top5_acc = test(net, builder, epochs=1, batch_size=512)
+    print("acc: ", acc)
+    print("top5 acc: ", top5_acc)
+
+    lr = lr / 1.4
+
+torch.save(net, 'model_10_128')

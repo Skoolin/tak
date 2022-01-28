@@ -143,8 +143,7 @@ def test(net, dataset, batch_size=64):
             if target_p[i].item() in i_pred_p_top5:
                 top5_count = top5_count+1
 
-    print("accuracy: " + str(top1_count/num_entries))
-    print("top5 accuracy: " + str(top5_count/num_entries))
+    return top1_count/num_entries, top5_count/num_entries
 
 def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weights=None):
     print("training...")
@@ -156,7 +155,7 @@ def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weig
 
     criterion = MultiLoss(policy_weights)
 
-    train_set_size = int(len(dataset) * 0.9)
+    train_set_size = int(len(dataset) * 0.95)
     validation_set_size = len(dataset) - train_set_size
     train_set, validation_set = data.random_split(dataset, [train_set_size, validation_set_size], generator=torch.Generator().manual_seed(42))
 
@@ -184,5 +183,8 @@ def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weig
                 print("completed batch " + str(idx+1) + "! current loss: " + str(loss_sum/100.))
                 loss_sum = 0.
 
-        test(net, validation_set, batch_size)
+                print("---validation---")
+        acc, top5_acc = test(net, validation_set, batch_size)
+        print("acc: ", acc)
+        print("top5 acc: ", top5_acc)
         scheduler.step()

@@ -10,7 +10,10 @@ from neural.model import TakNetwork, train, test
 from dataset_builder import DatasetBuilder, get_input_repr, get_move_from_conv_repr
 
 import numpy as np
+import matplotlib.pyplot as plt
 import sys
+
+# sys.stdout = open('test.txt', 'w')
 
 def predict_move(net, game):
     print("predicting move:")
@@ -25,24 +28,21 @@ def predict_move(net, game):
 
 net = torch.load('model_8_128', map_location=torch.device('cpu'))
 
-builder = DatasetBuilder(add_symmetries=False, ignore_plies=4)
-ptn_parser.main("../data/single.ptn", builder)
+accs = []
+top5_accs = []
 
-test(net, builder)
+for plie in range(4, 100, 2):
+    print("testing depth ", int(2+plie/2))
+    builder = DatasetBuilder(add_symmetries=False, ignore_plies=plie, max_plies=2)
+    ptn_parser.main("../data/games_test.ptn", builder)
+    acc, top5_acc = test(net, builder) if len(builder) > 0 else (0., 0.)
+    accs.append(acc)
+    top5_accs.append(top5_acc)
 
-builder = DatasetBuilder(add_symmetries=False, ignore_plies=0)
-ptn_parser.main("../data/single.ptn", builder)
-
-game = GameState(6)
-
-for i in range(4):
-    move = get_move_from_conv_repr(builder.policies[i])
-    print(move)
-    game.move(move)
-
-for i in range(4, 40):
-    game.print_state()
-    move = get_move_from_conv_repr(builder.policies[i])
-    print("human move: " + move)
-    predict_move(net, game)
-    game.move(move)
+plt.title("accuracy over depth")
+plt.xlabel("depth in moves")
+plt.ylabel("accuracy")
+plt.plot(np.arange(2, 50), accs, label="accuracy")
+plt.plot(np.arange(2, 50), top5_accs, label="top5 accuracy")
+plt.legend()
+plt.show()

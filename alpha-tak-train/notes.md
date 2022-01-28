@@ -72,8 +72,31 @@ tested on bot dataset:
 accuracy: 0.35429017160686427
 top5 accuracy: 0.7008060322412897
 
+Because larger net performed so much better, I am gonna train an even bigger net.
+Benchmarks on unknown google colab GPU:
+17s for 99k positions (batchsize 128-512),
+18s for 99k positions (batchsize 64),
+24s for 99k positions (batchsize 32)
+
+## 16-192 3 epoch, all data (human + bot):
+tested on human dataset:
+accuracy: 0.341361182154021
+top5 accuracy: 0.7200554134697357
+
+tested on bot dataset:
+
+
+Was still improving after 3 epochs. I can try again with more epochs. But this
+already takes more then 1h on Tesla T4 (equivalent of RTX 2070), so I might
+return to smaller sized net. 8-128 or 10-128, with more epochs.
+This large net needs more data to be worth the extra computations. Optimally, I
+have like 25k games (equivalent of 200k games because of symmetries) to match
+small Bad Gyal training dataset.
 
 # general thoughts
 - the model seems to really struggle with early, close to empty boards.
 Does it have a problem when it can't extract features from an empty position?
+-> Resolved after Bias!
 - I am not sure about the fully convolutional policy head.
+-> I have yet to run a test to compare, but as results are very promising for
+convolutional policy head I haven't yet.
