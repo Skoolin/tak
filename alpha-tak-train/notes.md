@@ -54,10 +54,23 @@ No sign of overfitting.
 This is definitely enough data to drop LR during training, but to get the
 direct comparison between both dataset options I don't change LR here.
 
-## 5-48: 6 epoch, lr 0.01 (drop after 2 and 4 epochs), tako vs. tiltak data:
-accuracy on bot games:
+I put bias back in, as Lc0 also uses bias on convolutions.
 
-accuracy on playtak games:
+## 8-128: 6 epoch, lr 0.01 (drop after every 3):
+accuracy: 0.30242592592592593
+top5 accuracy: 0.6657592592592593
+This is insane. The model was too small to fit everything before. Adding bias
+and filters + extra layers brought the net on another level. This might
+even be able to play a game with just policy head?!?
+
+## 8-128 3 epoch, all data(human + bot):
+tested on human dataset:
+accuracy: 0.32136260301221936
+top5 accuracy: 0.6934143222506394
+
+tested on bot dataset:
+accuracy: 0.35429017160686427
+top5 accuracy: 0.7008060322412897
 
 
 # general thoughts

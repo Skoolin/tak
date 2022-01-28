@@ -84,7 +84,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
 
         self.result = 0.0  # float, target value for current game
 
-        self.max_size=sys.maxsize
+        self.max_size=1_000_000
         self.add_symmetries=add_symmetries
         self.ignore_plies=ignore_plies
 

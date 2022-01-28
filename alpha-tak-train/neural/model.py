@@ -44,9 +44,9 @@ class InitialConvolution(nn.Module):
 class ResBlock(nn.Module):
     def __init__(self, filters):
         super(ResBlock, self).__init__()
-        self.conv1 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(filters)
-        self.conv2 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
         self.bn2 = nn.BatchNorm2d(filters)
 
     def forward(self, s):
@@ -63,9 +63,9 @@ class ResBlock(nn.Module):
 class PolicyHead(nn.Module):
     def __init__(self, filters):
         super(PolicyHead, self).__init__()
-        self.conv1 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(filters)
-        self.conv2 = nn.Conv2d(filters, 3+4*62, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(filters, 3+4*62, kernel_size=3, stride=1, padding=1)
         self.flatten = nn.Flatten()
 
     def forward(self, s):
@@ -80,7 +80,7 @@ class PolicyHead(nn.Module):
 class ValueHead(nn.Module):
     def __init__(self, filters):
         super(ValueHead, self).__init__()
-        self.conv1 = nn.Conv2d(filters, 1, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(filters, 1, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(1)
         self.flatten = nn.Flatten()
         self.fc1 = nn.Linear(6*6, 32)
@@ -102,14 +102,13 @@ class TakNetwork(nn.Module):
     def __init__(self, stack_limit=12, res_blocks=20, filters=256):
         super(TakNetwork, self).__init__()
         self.initial_conv = InitialConvolution(6+2*stack_limit+2, filters)
-        self.res_blocks = [ResBlock(filters) for x in range(res_blocks)]
+        self.res_blocks = nn.Sequential(*[ResBlock(filters) for x in range(res_blocks)])
         self.policy_head = PolicyHead(filters)
         self.value_head = ValueHead(filters)
 
     def forward(self, s):
         s = self.initial_conv(s)
-        for block in self.res_blocks:
-            s = block(s)
+        s = self.res_blocks(s)
         p = self.policy_head(s)
         v = self.value_head(s)
         return p, v
@@ -117,6 +116,9 @@ class TakNetwork(nn.Module):
 def test(net, dataset, batch_size=64):
     print("testing...")
     print(str(len(dataset)) + " samples")
+    cuda = torch.cuda.is_available()
+    if cuda:
+        net.cuda()
     net.eval()
     num_entries = len(dataset)
     test_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -126,7 +128,10 @@ def test(net, dataset, batch_size=64):
 
     for idx, batch in enumerate(test_loader):
         s, target_p, target_v = batch
-        predicted_p, predicted_v = net(s.float())
+        s = s.float()
+        if cuda:
+            s = s.cuda()
+        predicted_p, predicted_v = net(s)
 
         pred_p_result = predicted_p.argmax(dim=1)
         pred_p_top5 = torch.topk(predicted_p, 5, dim=1)
@@ -147,7 +152,7 @@ def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weig
     cuda = torch.cuda.is_available()
     if cuda:
         net.cuda()
-        net.train()
+    net.train()
 
     criterion = MultiLoss(policy_weights)
 
@@ -175,8 +180,8 @@ def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weig
 
             loss_sum += loss.item()
 
-            if idx % 100 == 0:
-                print("completed batch " + str(idx) + "! current loss: " + str(loss_sum/100.))
+            if idx % 100 == 99:
+                print("completed batch " + str(idx+1) + "! current loss: " + str(loss_sum/100.))
                 loss_sum = 0.
 
         test(net, validation_set, batch_size)
