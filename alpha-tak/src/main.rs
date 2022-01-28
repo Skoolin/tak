@@ -1,6 +1,7 @@
 use network::Network;
 use self_play::play_until_better;
-use tch::Cuda;
+use tch::{Cuda, Tensor, CModule, TchError};
+use tch;
 
 #[macro_use]
 extern crate lazy_static;
@@ -14,18 +15,16 @@ pub mod turn_map;
 
 const START: usize = 0;
 
-fn main() {
+fn main() -> Result<(), TchError> {
     tch::maybe_init_cuda();
     println!("CUDA: {}", Cuda::is_available());
 
-    let mut nn = if START == 0 {
-        Network::<4>::default()
-    } else {
-        Network::<4>::load(format!("models/{START:03}.model")).unwrap()
-    };
-    for i in (START + 1)..1000 {
-        nn = play_until_better(nn);
-        println!("saving model");
-        nn.save(format!("models/{i:03}.model")).unwrap();
-    }
+    let opts = (tch::Kind::Float, tch::Device::Cpu);
+
+    let model = CModule::load("forward_10_128.pt")?;
+    let input = tch::IValue::Tensor(Tensor::zeros(&[28, 6, 6], opts));
+
+    let output = model.forward_is(&[input]);
+    println!("{:?}", output);
+    Ok(())
 }

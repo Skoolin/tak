@@ -26,23 +26,12 @@ def predict_move(net, game):
     for i in range(5):
         print(str(i+1) + ". " + get_move_from_conv_repr(top5.indices[0][i].item()) + ": " + str(top5.values[0][i].item()))
 
-net = torch.load('model_8_128', map_location=torch.device('cpu'))
+#net = torch.load('model_10_128', map_location=torch.device('cpu'))
+#net.eval()
 
-accs = []
-top5_accs = []
+game = GameState(6)
+example = torch.from_numpy(get_input_repr(game)).float()
+print(example.size())
 
-for plie in range(4, 100, 2):
-    print("testing depth ", int(2+plie/2))
-    builder = DatasetBuilder(add_symmetries=False, ignore_plies=plie, max_plies=2)
-    ptn_parser.main("../data/games_test.ptn", builder)
-    acc, top5_acc = test(net, builder) if len(builder) > 0 else (0., 0.)
-    accs.append(acc)
-    top5_accs.append(top5_acc)
-
-plt.title("accuracy over depth")
-plt.xlabel("depth in moves")
-plt.ylabel("accuracy")
-plt.plot(np.arange(2, 50), accs, label="accuracy")
-plt.plot(np.arange(2, 50), top5_accs, label="top5 accuracy")
-plt.legend()
-plt.show()
+#traced_script_module = torch.jit.trace(net, example)
+#traced_script_module.save("forward_10_128.pt")
