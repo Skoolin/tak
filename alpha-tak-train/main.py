@@ -24,7 +24,7 @@ files = [
 
 test_file = "../data/games_test.ptn"
 
-net = TakNetwork(stack_limit=10, res_blocks=10, filters=128)
+net = TakNetwork(stack_limit=15, res_blocks=10, filters=128)
 
 lr = 0.01
 for epoch in range(5):

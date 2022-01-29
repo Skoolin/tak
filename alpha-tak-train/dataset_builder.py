@@ -161,7 +161,7 @@ def transform_pos(input, orientation):
 # - 21 values for current player reserves
 # - 21 values for other player reserves
 def get_input_repr(board: GameState):
-    input = np.zeros((6+2*10+2+2+21,6,6), dtype=float)
+    input = np.zeros((6+2*15+2+2*21,6,6), dtype=float)
 
     for x in range(6):
         for y in range(6):
@@ -189,7 +189,7 @@ def get_input_repr(board: GameState):
                     idx = idx+2
 
             input[36 if board.player == "white" else 37, x, y] = 1.0
-            p_id = 0 if self.player == "white" else 1
+            p_id = 0 if board.player == "white" else 1
             input[37+board.reserves[p_id]] = 1.0
             input[58+board.reserves[1-p_id]] = 1.0
 

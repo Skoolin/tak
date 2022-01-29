@@ -101,7 +101,7 @@ class ValueHead(nn.Module):
 class TakNetwork(nn.Module):
     def __init__(self, stack_limit=12, res_blocks=20, filters=256):
         super(TakNetwork, self).__init__()
-        self.initial_conv = InitialConvolution(6+2*stack_limit+2, filters)
+        self.initial_conv = InitialConvolution(6+2*stack_limit+2+2*21, filters)
         self.res_blocks = nn.Sequential(*[ResBlock(filters) for x in range(res_blocks)])
         self.policy_head = PolicyHead(filters)
         self.value_head = ValueHead(filters)
@@ -183,7 +183,7 @@ def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weig
                 print("completed batch " + str(idx+1) + "! current loss: " + str(loss_sum/100.))
                 loss_sum = 0.
 
-                print("---validation---")
+        print("---validation---")
         acc, top5_acc = test(net, validation_set, batch_size)
         print("acc: ", acc)
         print("top5 acc: ", top5_acc)

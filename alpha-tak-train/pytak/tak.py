@@ -130,7 +130,7 @@ class GameState:
             # decrease reserves
             if stone_type is not 'C':
                 p_id = 0 if self.player == "white" else 1
-                reserves[p_id] -= 1
+                self.reserves[p_id] -= 1
 
             # get target square
             square = self.get_square(ptn)
