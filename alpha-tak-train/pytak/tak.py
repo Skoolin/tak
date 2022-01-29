@@ -46,6 +46,7 @@ class GameState:
     def __init__(self, size):
         self.board = []
         self.size = size
+        self.reserves = [21,21]
         for i in range(0, size):
             self.board.append([])
             for j in range(0, size):
@@ -57,6 +58,7 @@ class GameState:
         c = GameState(self.size)
         c.player = self.player
         c.first_move = self.first_move
+        c.reserves = [self.reserves[0], self.reserves[1]]
         for y in range(0, self.size):
             for x in range(0, self.size):
                 c.board[x][y] = self.board[x][y].clone()
@@ -124,6 +126,11 @@ class GameState:
             if ptn[0].isupper():
                 stone_type = ptn[0]
                 ptn = ptn[1:]
+
+            # decrease reserves
+            if stone_type is not 'C':
+                p_id = 0 if self.player == "white" else 1
+                reserves[p_id] -= 1
 
             # get target square
             square = self.get_square(ptn)

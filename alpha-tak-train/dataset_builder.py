@@ -152,14 +152,16 @@ def transform_pos(input, orientation):
         input = np.flip(input, axis=2)
     return np.rot90(input, k=orientation, axes=(1,2)).copy()
 
-# input representation: channels first. channels*height*width = 22*6*6
+# input representation: channels first. channels*height*width = 80*6*6
 # channels: (w = current player, b = other player)
 # - 6 for top stone: w_cap, b_cap, w_wall, b_wall, w_flat, b_flat
-# - 2 for 10 remaining stones each: w_flat, b_flat (top to bottom)
+# - 2 for 15 captured stones each: w_flat, b_flat (top to bottom)
 # - all ones if white current player
-# . all ones if black current player
+# - all ones if black current player
+# - 21 values for current player reserves
+# - 21 values for other player reserves
 def get_input_repr(board: GameState):
-    input = np.zeros((6+2*10+2,6,6), dtype=float)
+    input = np.zeros((6+2*10+2+2+21,6,6), dtype=float)
 
     for x in range(6):
         for y in range(6):
@@ -180,13 +182,16 @@ def get_input_repr(board: GameState):
                 input[idx, x, y] = 1.0
                 idx = 6
                 for stone in reversed(stack[:-1]): # ignore top stone
-                    if idx > 24:
+                    if idx > 34:
                         break
                     use_idx = idx if stone.colour == board.player else idx+1
                     input[use_idx, x, y] = 1.0
                     idx = idx+2
 
-            input[26 if board.player == "white" else 27, x, y] = 1.0
+            input[36 if board.player == "white" else 37, x, y] = 1.0
+            p_id = 0 if self.player == "white" else 1
+            input[37+board.reserves[p_id]] = 1.0
+            input[58+board.reserves[1-p_id]] = 1.0
 
     return input
 
