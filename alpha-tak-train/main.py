@@ -38,7 +38,7 @@ for epoch in range(5):
     ptn_parser.main(test_file, builder)
 
     print("---TEST---")
-    acc, top5_acc = test(net, builder, epochs=1, batch_size=512)
+    acc, top5_acc = test(net, builder, batch_size=512)
     print("acc: ", acc)
     print("top5 acc: ", top5_acc)
 
