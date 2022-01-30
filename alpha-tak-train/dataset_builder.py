@@ -1,4 +1,5 @@
 import sys
+import random
 from typing import Union
 import numpy as np
 import torch
@@ -89,6 +90,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
         self.add_symmetries=add_symmetries
         self.ignore_plies=ignore_plies
         self.max_plies=max_plies
+        random.seed(42)
 
     def __len__(self):
         return len(self.values)
@@ -126,9 +128,14 @@ class DatasetBuilder(PositionProcessor, Dataset):
         # result is inverted, as board is always transformed to current player perspective
         value = np.array([self.result if tak.player == "white" else -self.result])
 
+        rate = min(1.0, max(0.5, (1./119.)*self.plie+(7./22.)))
 
         if(self.add_symmetries):
             for symmetry in range(8):
+                # balance dataset to have less opening positions and more
+                # positions later.  this removes about 30% of position samples.
+                if random.random() > rate:
+                    continue
                 s_move = transform_move(move, symmetry)
                 policy = get_conv_move_repr(s_move)
                 self.policy_counts[policy] += 1

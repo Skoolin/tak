@@ -80,10 +80,11 @@ class PolicyHead(nn.Module):
 class ValueHead(nn.Module):
     def __init__(self, filters):
         super(ValueHead, self).__init__()
-        self.conv1 = nn.Conv2d(filters, 1, kernel_size=3, stride=1, padding=1)
-        self.bn1 = nn.BatchNorm2d(1)
+        # having 32 output filters is supposed to yield better results!
+        self.conv1 = nn.Conv2d(filters, 32, kernel_size=3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(6*6, 32)
+        self.fc1 = nn.Linear(6*6*32, 32)
         self.fc2 = nn.Linear(32, 1)
 
     def forward(self, s):
@@ -114,8 +115,6 @@ class TakNetwork(nn.Module):
         return p, v
 
 def test(net, dataset, batch_size=64):
-    print("testing...")
-    print(str(len(dataset)) + " samples")
     cuda = torch.cuda.is_available()
     if cuda:
         net.cuda()
@@ -145,9 +144,7 @@ def test(net, dataset, batch_size=64):
 
     return top1_count/num_entries, top5_count/num_entries
 
-def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weights=None):
-    print("training...")
-    print(str(len(dataset)) + " samples")
+def train(net, dataset, epochs, batch_size, optimizer, policy_weights=None):
     cuda = torch.cuda.is_available()
     if cuda:
         net.cuda()
@@ -160,8 +157,6 @@ def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weig
     train_set, validation_set = data.random_split(dataset, [train_set_size, validation_set_size], generator=torch.Generator().manual_seed(42))
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    optimizer = optim.Adam(net.parameters(), lr=lr)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, lr_steps, gamma=0.1)
     for epoch in range(epochs):
         loss_sum = 0.
         for idx, batch in enumerate(train_loader):
@@ -183,8 +178,5 @@ def train(net, dataset, epochs, batch_size, lr=0.003, lr_steps=1000, policy_weig
                 print("completed batch " + str(idx+1) + "! current loss: " + str(loss_sum/100.))
                 loss_sum = 0.
 
-        print("---validation---")
         acc, top5_acc = test(net, validation_set, batch_size)
-        print("acc: ", acc)
-        print("top5 acc: ", top5_acc)
-        scheduler.step()
+        return acc, top5_acc

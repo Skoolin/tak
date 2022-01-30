@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 import torch.utils.data as data
+import torch.optim as optim
 
 import pytak.ptn_parser as ptn_parser
 from pytak.tak import GameState
@@ -12,36 +13,35 @@ from dataset_builder import DatasetBuilder, get_input_repr, get_move_from_conv_r
 import numpy as np
 import sys
 
-files = [
-    "../data/games_1.ptn",
-    "../data/games_2.ptn",
-    "../data/games_3.ptn",
-    "../data/tiltak_tako_1.ptn",
-    "../data/tiltak_tako_2.ptn",
-    "../data/tiltak_tako_3.ptn",
-    "../data/tiltak_tako_4.ptn",
-]
+files = ["../data/train/games0_6s_train_"+str(i+1)+".ptn" for i in range(42)]
+test_files = ["../data/test/games0_6s_test_"+str(i+1)+".ptn" for i in range(4)]
 
-test_file = "../data/games_test.ptn"
 
 net = TakNetwork(stack_limit=15, res_blocks=10, filters=128)
 
 lr = 0.01
-for epoch in range(5):
+optimizer = optim.Adam(net.parameters(), lr=lr)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
+for epoch in range(4):
     print("starting epoch " + str(epoch+1) + " for real!")
     for f in files:
-        builder = DatasetBuilder(add_symmetries=True, ignore_plies=4)
+        builder = DatasetBuilder(add_symmetries=True, ignore_plies=6)
         ptn_parser.main(f, builder)
 
-        train(net, builder, epochs=1, batch_size=512, lr=lr)
-    builder = DatasetBuilder(add_symmetries=True, ignore_plies=4)
-    ptn_parser.main(test_file, builder)
+        acc, top5_acc = train(net, builder, epochs=1, batch_size=512, optimizer=optimizer)
+        print("---validation---")
+        print("acc: ", acc)
+        print("top5 acc: ", top5_acc)
+        scheduler.step(acc+0.3*top5_acc) # if we stop improving, reduce LR!
+
+    builder = DatasetBuilder(add_symmetries=False, ignore_plies=6)
+    for f in test_files:
+        ptn_parser.main(f, builder)
 
     print("---TEST---")
     acc, top5_acc = test(net, builder, batch_size=512)
     print("acc: ", acc)
     print("top5 acc: ", top5_acc)
 
-    lr = lr / 1.4
-
-torch.save(net, 'model_10_128')
+    # save current version of net
+    torch.save(net, 'model_10_128')
