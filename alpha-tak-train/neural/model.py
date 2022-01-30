@@ -64,7 +64,7 @@ class SE_Block(nn.Module):
         return s
 
 class ResBlock(nn.Module):
-    def __init__(self, filters, se=True):
+    def __init__(self, filters, se=False):
         super(ResBlock, self).__init__()
         self.conv1 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(filters)
