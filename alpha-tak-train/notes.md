@@ -83,15 +83,29 @@ tested on human dataset:
 accuracy: 0.341361182154021
 top5 accuracy: 0.7200554134697357
 
-tested on bot dataset:
-
-
 Was still improving after 3 epochs. I can try again with more epochs. But this
 already takes more then 1h on Tesla T4 (equivalent of RTX 2070), so I might
 return to smaller sized net. 8-128 or 10-128, with more epochs.
 This large net needs more data to be worth the extra computations. Optimally, I
 have like 25k games (equivalent of 200k games because of symmetries) to match
 small Bad Gyal training dataset.
+
+## 10-128 trained on 21k tiltak selfplay games:
+acc:  0.38003332407664536
+top5 acc:  0.7795056928630936
+strongest net yet.
+
+The bot has a really strong opening, but is much worse later on. Accuracy drops
+down to only 0.2 even. I will try to improve on that by balancing dataset,
+supplying equally early game positions instead of twice as many compared to
+middle/late game positions
+
+## 10-128 21k tiltak (3 epoch), balanced dataset:
+acc:  0.42035469710272166
+top5_acc:  0.8334047410008779
+This definitely helped with late game moves. Also, a huge improvement was during
+3rd epoch, so more data/more epochs might still substantially improve accuracy.
+I will try that with a SE-net and hopefully get mind-blown again.
 
 # general thoughts
 - the model seems to really struggle with early, close to empty boards.

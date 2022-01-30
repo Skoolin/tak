@@ -41,13 +41,39 @@ class InitialConvolution(nn.Module):
         s = F.relu(s)
         return s
 
+class SE_Block(nn.Module):
+    def __init__(self, filters, se_channels=32):
+        super(SE_Block, self).__init__()
+        self.globalAvgPool = nn.AvgPool2d(6, stride=1)
+        self.fc1 = nn.Linear(filters, se_channels)
+        self.flatten = nn.Flatten()
+        self.w_fc = nn.Linear(se_channels, filters)
+        self.b_fc = nn.Linear(se_channels, filters)
+
+    def forward(self, s):
+        r = self.globalAvgPool(s)
+        r = self.flatten(r)
+        r = F.relu(r)
+        r = self.fc1(r)
+        w = self.w_fc(r)
+        w = w.view(s.size(0), s.size(1), 1, 1)
+        w = F.sigmoid(w)
+        b = self.b_fc(r)
+        b = b.view(s.size(0), s.size(1), 1, 1)
+        s = s*w.expand_as(s)+b.expand_as(s)
+        return s
+
 class ResBlock(nn.Module):
-    def __init__(self, filters):
+    def __init__(self, filters, se=True):
         super(ResBlock, self).__init__()
         self.conv1 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm2d(filters)
         self.conv2 = nn.Conv2d(filters, filters, kernel_size=3, stride=1, padding=1)
         self.bn2 = nn.BatchNorm2d(filters)
+
+        self.is_se = se
+        if se:
+            self.se = SE_Block(filters)
 
     def forward(self, s):
         residual = s
@@ -58,6 +84,9 @@ class ResBlock(nn.Module):
         s = self.bn2(s)
         s += residual
         s = F.relu(s)
+
+        if hasattr(self, "is_se") and self.is_se:
+            s = self.se(s)
         return s
 
 class PolicyHead(nn.Module):
@@ -102,7 +131,7 @@ class ValueHead(nn.Module):
 class TakNetwork(nn.Module):
     def __init__(self, stack_limit=12, res_blocks=20, filters=256):
         super(TakNetwork, self).__init__()
-        self.initial_conv = InitialConvolution(6+2*stack_limit+2+2*21, filters)
+        self.initial_conv = InitialConvolution(6+2*stack_limit+2+2*30, filters)
         self.res_blocks = nn.Sequential(*[ResBlock(filters) for x in range(res_blocks)])
         self.policy_head = PolicyHead(filters)
         self.value_head = ValueHead(filters)

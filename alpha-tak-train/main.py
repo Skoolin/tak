@@ -21,10 +21,12 @@ net = TakNetwork(stack_limit=15, res_blocks=10, filters=128)
 
 lr = 0.01
 optimizer = optim.Adam(net.parameters(), lr=lr)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=6, cooldown=2)
 for epoch in range(4):
-    print("starting epoch " + str(epoch+1) + " for real!")
+    print("starting epoch ", epoch+1)
     for f in files:
+        print("---training---")
+        print("training file: ", f)
         builder = DatasetBuilder(add_symmetries=True, ignore_plies=6)
         ptn_parser.main(f, builder)
 

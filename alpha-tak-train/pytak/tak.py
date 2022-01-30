@@ -46,7 +46,7 @@ class GameState:
     def __init__(self, size):
         self.board = []
         self.size = size
-        self.reserves = [21,21]
+        self.reserves = [30,30]
         for i in range(0, size):
             self.board.append([])
             for j in range(0, size):
@@ -128,7 +128,7 @@ class GameState:
                 ptn = ptn[1:]
 
             # decrease reserves
-            if stone_type is not 'C':
+            if stone_type != 'C':
                 p_id = 0 if self.player == "white" else 1
                 self.reserves[p_id] -= 1
 

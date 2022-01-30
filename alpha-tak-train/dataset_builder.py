@@ -128,7 +128,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
         # result is inverted, as board is always transformed to current player perspective
         value = np.array([self.result if tak.player == "white" else -self.result])
 
-        rate = min(1.0, max(0.5, (1./119.)*self.plie+(7./22.)))
+        rate = min(1.0, max(0.5, self.plie/110.+(7./22.)))
 
         if(self.add_symmetries):
             for symmetry in range(8):
@@ -168,7 +168,7 @@ def transform_pos(input, orientation):
 # - 21 values for current player reserves
 # - 21 values for other player reserves
 def get_input_repr(board: GameState):
-    input = np.zeros((6+2*15+2+2*21,6,6), dtype=float)
+    input = np.zeros((6+2*15+2+2*30,6,6), dtype=float)
 
     for x in range(6):
         for y in range(6):
@@ -198,7 +198,7 @@ def get_input_repr(board: GameState):
             input[36 if board.player == "white" else 37, x, y] = 1.0
             p_id = 0 if board.player == "white" else 1
             input[37+board.reserves[p_id]] = 1.0
-            input[58+board.reserves[1-p_id]] = 1.0
+            input[67+board.reserves[1-p_id]] = 1.0
 
     return input
 
