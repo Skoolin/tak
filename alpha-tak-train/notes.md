@@ -114,3 +114,51 @@ Does it have a problem when it can't extract features from an empty position?
 - I am not sure about the fully convolutional policy head.
 -> I have yet to run a test to compare, but as results are very promising for
 convolutional policy head I haven't yet.
+
+## 08.08.2025:
+fixed value in dataset generator, white wins where written as draws
+
+## 6-64 (4 epoch):
+3 epoch:
+acc:  0.367585601404741
+top5 acc:  0.7760140474100088
+4 epoch:
+acc:  0.3674381035996488
+top5 acc:  0.775964881474978
+
+## 6-64 (4 epoch), Squeeze-Excitation:
+2 epoch:
+acc:  0.38442844600526777
+top5 acc:  0.7936646180860404
+3 epoch:
+acc:  0.3896470588235294
+top5 acc:  0.7987287093942055
+4 epoch:
+acc:  0.38941527655838454
+top5 acc:  0.7985882352941176
+
+## separable convolutions:
+without: Params: 741.72k, MACs: 25.36MMac
+with: Params: 514.4k, MACs: 17.29MMac
+
+## 12-64 (4 epoch), ConvNext:
+Params: 727.13k, MACs: 24.98MMac
+2 epoch:
+acc:  0.32754345917471467
+top5 acc:  0.7267006145741879
+=> aborted
+
+## 16-256 (4 epoch) SE (size matching takzero network):
+Params: 20.54M, MACs: 734.04MMac
+epoch 1:
+acc:  0.3573801580333626
+top5 acc:  0.7679297629499561
+epoch 2:
+acc:  0.41550131694468834
+top5 acc:  0.8290851624231782
+epoch 3:
+acc:  0.4170886742756804
+top5 acc:  0.8306163301141352
+epoch 4:
+acc:  0.4172221246707638
+top5 acc:  0.830665496049166

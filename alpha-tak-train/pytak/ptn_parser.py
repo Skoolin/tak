@@ -82,7 +82,10 @@ def main(ptn_file, dp: PositionProcessor):
     count = f.read().count('\n\n[')+1
     f.close()
 
-    with tqdm(total=count, mininterval=10.0, maxinterval=50.0) as progress:
+    if len(dp) > dp.max_size:
+        print("discarding, dataset full!")
+
+    with tqdm(total=count, mininterval=10.0, maxinterval=50.0, disable=True) as progress:
         with open(ptn_file) as f:
             ptn = ''
             line = f.readline()

@@ -6,6 +6,7 @@ import torch.utils.data as data
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
+
 class MultiLoss(torch.nn.Module):
     def __init__(self, policy_weights=None):
         super(MultiLoss, self).__init__()
@@ -26,6 +27,7 @@ class MultiLoss(torch.nn.Module):
         total_loss = (value_loss + policy_loss).mean()
         return total_loss
 
+
 class InitialConvolution(nn.Module):
     def __init__(self, input_layers, filters):
         super(InitialConvolution, self).__init__()
@@ -41,27 +43,59 @@ class InitialConvolution(nn.Module):
         s = F.relu(s)
         return s
 
+
 class SE_Block(nn.Module):
-    def __init__(self, filters, se_channels=32):
-        super(SE_Block, self).__init__()
-        self.globalAvgPool = nn.AvgPool2d(6, stride=1)
-        self.fc1 = nn.Linear(filters, se_channels)
-        self.flatten = nn.Flatten()
-        self.w_fc = nn.Linear(se_channels, filters)
-        self.b_fc = nn.Linear(se_channels, filters)
+    def __init__(self, channels, reduction=16):
+        super().__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channels, channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channels // reduction, channels, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y
+
+
+class ConvNextBlock(nn.Module):
+    def __init__(self, filters, se=False, expansion=4):
+        super(ConvNextBlock, self).__init__()
+        expanded = filters*expansion
+        self.conv1 = nn.Conv2d(filters, expanded, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(expanded, expanded, kernel_size=3, groups=expanded, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(expanded)
+        self.conv3 = nn.Conv2d(expanded, filters, kernel_size=1, stride=1, padding=0, bias=False)
+
+        self.is_se = se
+        if se:
+            self.se = SE_Block(filters)
 
     def forward(self, s):
-        r = self.globalAvgPool(s)
-        r = self.flatten(r)
-        r = F.relu(r)
-        r = self.fc1(r)
-        w = self.w_fc(r)
-        w = w.view(s.size(0), s.size(1), 1, 1)
-        w = F.sigmoid(w)
-        b = self.b_fc(r)
-        b = b.view(s.size(0), s.size(1), 1, 1)
-        s = s*w.expand_as(s)+b.expand_as(s)
+        residual = s
+
+        # upscale:
+        s = self.conv1(s)
+        s = F.relu(s)
+        # grouped:
+        s = self.conv2(s)
+        s = self.bn2(s)
+        s = F.relu(s)
+        # downscale:
+        s = self.conv3(s)
+
+        if hasattr(self, "is_se") and self.is_se:
+            s = self.se(s)
+
+        s += residual
+        s = F.relu(s)
+
         return s
+
 
 class ResBlock(nn.Module):
     def __init__(self, filters, se=False):
@@ -82,12 +116,15 @@ class ResBlock(nn.Module):
         s = F.relu(s)
         s = self.conv2(s)
         s = self.bn2(s)
-        s += residual
-        s = F.relu(s)
 
         if hasattr(self, "is_se") and self.is_se:
             s = self.se(s)
+
+        s += residual
+        s = F.relu(s)
+
         return s
+
 
 class PolicyHead(nn.Module):
     def __init__(self, filters):
@@ -132,7 +169,7 @@ class TakNetwork(nn.Module):
     def __init__(self, stack_limit=12, res_blocks=20, filters=256):
         super(TakNetwork, self).__init__()
         self.initial_conv = InitialConvolution(6+2*stack_limit+2+2*30, filters)
-        self.res_blocks = nn.Sequential(*[ResBlock(filters) for x in range(res_blocks)])
+        self.res_blocks = nn.Sequential(*[ResBlock(filters, se=True) for _ in range(res_blocks)])
         self.policy_head = PolicyHead(filters)
         self.value_head = ValueHead(filters)
 
@@ -142,6 +179,7 @@ class TakNetwork(nn.Module):
         p = self.policy_head(s)
         v = self.value_head(s)
         return p, v
+
 
 def test(net, dataset, batch_size=64):
     cuda = torch.cuda.is_available()
@@ -173,10 +211,13 @@ def test(net, dataset, batch_size=64):
 
     return top1_count/num_entries, top5_count/num_entries
 
+
 def train(net, dataset, epochs, batch_size, optimizer, policy_weights=None):
     cuda = torch.cuda.is_available()
     if cuda:
         net.cuda()
+    else:
+        print("WARNING: running on CPU, cuda not available!")
     net.train()
 
     criterion = MultiLoss(policy_weights)

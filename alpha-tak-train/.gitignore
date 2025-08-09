@@ -1,1 +1,6 @@
 model_*
+convnet_*
+nnue_*
+convnext_*
+senet_*
+senext_*
