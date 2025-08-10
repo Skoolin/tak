@@ -11,11 +11,12 @@ net = torch.load("nnue_09_08_2025_0001", weights_only=False).cpu()
 
 # quantize
 
-accum_weights = net.accumulators.weight.data.numpy()
+accum_weights = net.accumulators.weight.data.numpy().transpose()
 quantized_accum_weights = quantize(accum_weights)
 print("accum min: ", accum_weights.min() * 42.)
 print("accum max: ", accum_weights.max() * 42.)
 print(quantized_accum_weights)
+print(quantized_accum_weights.shape)
 
 accum_bias = net.accumulators.bias.data.numpy()
 quantized_accum_bias = quantize(accum_bias)
@@ -30,6 +31,12 @@ output_scale = 127. / output_max
 print("output scale: ", output_scale)
 quantized_output_weights = quantize(output_weights, np.int8, output_scale)
 print(quantized_output_weights)
-output_bias = net.output.bias.data.numpy()[0] * output_scale  # just one number, doesn't need to be quantized!
+output_bias = net.output.bias.data.numpy()
+quantized_output_bias = quantize(output_bias, np.int32, output_scale)
 print(output_bias)
 
+with open("nnue.bin", "wb") as f:
+    f.write(quantized_output_bias.tobytes())
+    f.write(quantized_output_weights.tobytes())
+    f.write(quantized_accum_bias.tobytes())
+    f.write(quantized_accum_weights.tobytes())
