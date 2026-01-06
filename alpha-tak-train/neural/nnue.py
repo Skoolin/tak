@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data
 from torch.utils.data import DataLoader, WeightedRandomSampler
-import numpy as np
+from tqdm import tqdm
 
 
 class NNUE(nn.Module):
@@ -44,7 +44,7 @@ def test(net, dataset, batch_size=64):
     return loss_sum / test_count
 
 
-def train(net, dataset, epochs, batch_size, optimizer):
+def train(net, dataset, class_weights, epochs, batch_size, optimizer):
     cuda = torch.cuda.is_available()
     if cuda:
         net.cuda()
@@ -54,17 +54,10 @@ def train(net, dataset, epochs, batch_size, optimizer):
 
     train_set_size = int(len(dataset) * 0.95)
 
-    # balance dataset:
-    targets = torch.tensor([dataset[i][2] for i in range(len(dataset))])
-    targets_np = targets.numpy()
-    unique, counts = np.unique(targets_np, return_counts=True)
-    class_weights = 1. / (counts / len(dataset))
-    class_weights[1] = class_weights[1] / 4.  # draws aren't that useful
-
     validation_set_size = len(dataset) - train_set_size
     train_set, validation_set = data.random_split(dataset, [train_set_size, validation_set_size], generator=torch.Generator().manual_seed(42))
 
-    train_weights = [class_weights[int(t[0])+1] for _, _, t in train_set]
+    train_weights = [class_weights[int(t[0])] for _, _, t in train_set]
 
     train_loader = DataLoader(train_set,
                               batch_size=batch_size,
@@ -72,7 +65,7 @@ def train(net, dataset, epochs, batch_size, optimizer):
 
     for epoch in range(epochs):
         loss_sum = 0.
-        for idx, batch in enumerate(train_loader):
+        for idx, batch in tqdm(enumerate(train_loader), desc='training', total=1+int(0.7*len(train_weights)/batch_size)):
             s, target_p, target_v = batch
             s = s.float()
             target_v = target_v.float()

@@ -7,7 +7,7 @@ def quantize(weights, dtype=np.int16, scaling=42.):
     rounded = np.sign(scaled) * np.ceil(np.abs(scaled) - 1e-12)  # epsilon for float rounding
     return rounded.astype(dtype)
 
-net = torch.load("nnue_09_08_2025_0001", weights_only=False).cpu()
+net = torch.load("nnue_05_01_2026_0001", weights_only=False).cpu()
 
 # quantize
 

@@ -77,7 +77,7 @@ offset_dict = {
 
 class DatasetBuilder(PositionProcessor, Dataset):
 
-    def __init__(self, add_symmetries=False, ignore_plies=0, max_plies=400, nnue=False, considered_captives=10):
+    def __init__(self, add_symmetries=False, ignore_plies=0, max_plies=400, nnue=False, considered_captives=10, seed=None):
         self.nnue = nnue
         self.considered_captives = considered_captives
 
@@ -94,7 +94,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
         self.add_symmetries = add_symmetries
         self.ignore_plies = ignore_plies
         self.max_plies = max_plies
-        random.seed(42)
+        random.seed(seed)
 
     def __len__(self):
         return len(self.values)
@@ -127,7 +127,7 @@ class DatasetBuilder(PositionProcessor, Dataset):
         if self.plie > self.max_plies + self.ignore_plies:
             return
 
-        rate = min(1.0, max(0.5, self.plie / 110. + (7. / 22.)))
+        rate = max(0.2, min(1.0, 0.24 + 0.024 * self.plie)) * 0.5 / 8
 
         if self.nnue:
             value = np.array([self.result])
